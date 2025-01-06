@@ -2,10 +2,14 @@
 # Simple SSH Manager is a program to simplify sshing to various networking devices
 import argparse
 import ipaddress
+import importlib.metadata
 import socket
 import subprocess
 
 from .config import Config
+
+
+VERSION = importlib.metadata.version("malathair_ssm")
 
 
 # Class to override the default argparse help formatting (makes things a bit cleaner)
@@ -32,15 +36,12 @@ def arg_parser(config):
     jump = session.add_mutually_exclusive_group()
     tunnels = parser.add_argument_group()
 
-    parser.add_argument(
-        "host", type=str, help="Subdomain of the host's url or the host's IP address"
-    )
+    parser.add_argument("host", type=str, help="Subdomain of the host's url or the host's IP address")
+
+    parser.add_argument("-v", "--version", action="version", version=VERSION)
 
     jump.add_argument(
-        "-j",
-        "--jump",
-        action="store_true",
-        help="SSHs via the jump host specified in the configuration file",
+        "-j", "--jump", action="store_true", help="SSHs via the jump host specified in the configuration file"
     )
     jump.add_argument(
         "-J",
@@ -51,11 +52,13 @@ def arg_parser(config):
     )
 
     session.add_argument(
-        "-p",
-        "--port",
-        default=config.ssh_port,
-        type=str,
-        help="Specifies the port to use for the SSH session",
+        "-o",
+        "--nopubkey",
+        action="store_true",
+        help="Disables the use of public keys for authentication. (Fixes authentication issues with certain devices)",
+    )
+    session.add_argument(
+        "-p", "--port", default=config.ssh_port, type=str, help="Specifies the port to use for the SSH session"
     )
 
     tunnels.add_argument(
@@ -105,6 +108,10 @@ def ssh(args, config, domain):
     alt_user = False if domain.find("@") == -1 else True
     command = "ssh -p " + args.port + " " + domain
 
+    # Disable the use of keys for authentication
+    if args.nopubkey:
+        command = command + " -o PubkeyAuthentication=no"
+
     # Jumphosting causes problems with sshpass. So only use sshpass
     # if we are not jumphosting
     if args.jump or (args.jumphost != config.jump_host):
@@ -112,6 +119,7 @@ def ssh(args, config, domain):
     elif config.sshpass and not alt_user:
         command = "sshpass -e " + command
 
+    # Open a dynamic port forward for socks5 proxy tunneling
     if args.tunnel:
         command = command + " -D " + config.tunnel_port
 
