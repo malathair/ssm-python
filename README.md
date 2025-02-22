@@ -7,12 +7,16 @@ SSM is a small Python wrapper to simplify some common SSH use cases. It is essen
 ### Prerequisites
 
  - Python3.11 or newer
- - Pipx
+ - uv or pipx
  - OpenSSH SSH client
 
 ### Installation
 
-Install the application with pipx using the following command:
+Install the application with uv or pipx using the following command:
+
+```bash
+uv tool install https://github.com/malathair/ssm/releases/download/v1.3.0/malathair_ssm-1.3.0-py3-none-any.whl
+```
 
 ```bash
 pipx install https://github.com/malathair/ssm/releases/download/v1.3.0/malathair_ssm-1.3.0-py3-none-any.whl
@@ -27,6 +31,7 @@ If for some reason the format of the config changes in a breaking way, the new v
 ### Configuration
 
 ssm expects configuration files to exist at one of the following locations:
+
 ```bash
 /usr/local/etc/ssm.conf
 
@@ -40,13 +45,18 @@ As of version 1.2.0, ssm now has it's default configuration hard coded into the 
 If you would like to modify the configuration, you can either use the configuration utility provided by the package (recommended) or you can edit the config files manually (not recommended).
 
 You can use the provided configuration utility by running:
+
 ```bash
 ssmconf
 ```
 
 ### Uninstalling
 
-Run the following to uninstall SSM:
+Run one of the following to uninstall SSM (depending on which was used to install it):
+
+```bash
+uv tool uninstall malathair-ssm
+```
 
 ```bash
 pipx uninstall malathair-ssm
