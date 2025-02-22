@@ -1,6 +1,9 @@
 # Poetry
 poetry.lock
 
+# uv
+uv.lock
+
 # Build artifacts
 dist/
 
@@ -22,7 +25,5 @@ __pycache__/
 log/
 *.log
 
-# Django
-.env
-db.sqlite3
-db.sqlite3-journal
+# Misc
+
