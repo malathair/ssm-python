@@ -106,7 +106,7 @@ def build_domain(host_arg, config):
 # Initiate the SSH session using the defined parameters
 def ssh(args, config, domain):
     alt_user = False if domain.find("@") == -1 else True
-    command = "ssh -p " + args.port + " " + domain
+    command = "ssh -o StrictHostKeyChecking=no -p " + args.port + " " + domain
 
     # Disable the use of keys for authentication
     if args.nopubkey:
@@ -133,8 +133,11 @@ def main():
     try:
         domain = build_domain(args.host, config)
         ssh(args, config, domain)
-    except (KeyboardInterrupt, subprocess.CalledProcessError):
-        return
+    except KeyboardInterrupt:
+        pass
+    except subprocess.CalledProcessError:
+        # print(e.returncode)
+        pass
     except Exception as e:
         print(e)
 

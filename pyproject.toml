@@ -1,14 +1,12 @@
 [project]
 name = "malathair-ssm"
-version = "1.3.0"
+version = "1.3.1"
 description = "SSH wrapper to simplify life"
-authors = [{name = "malathair", email = "malathair@spectregate.net"}]
-license = {text = "MIT"}
+authors = [{ name = "malathair", email = "malathair@spectregate.net" }]
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "toml>=0.10.2",
-]
+dependencies = ["toml>=0.10.2"]
 
 [project.scripts]
 ssm = "malathair.ssm:main"
@@ -19,5 +17,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages=["src/malathair"]
-
+packages = ["src/malathair"]
