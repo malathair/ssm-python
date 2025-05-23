@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-# Simple SSH Manager is a program to simplify sshing to various networking devices
+# -*- coding: utf-8 -*-
+
+"""
+Simple SSH Manager (SSM) is a program to simplify the act of SSH'ing into remote hosts
+
+SSM does this by providing a wrapper interface to the underlying OpenSSH command. This allows
+shorthand specification for options that are frequently used but can otherwise be quite verbose
+when using OpenSSH directly. Where possible, an OpenSSH config file should be used, and this
+tool aims to provide a simplified interface for options that need to be dynamic, or are not
+supported by the OpenSSH config file.
+"""
+
 import argparse
 import ipaddress
 import importlib.metadata
@@ -36,12 +47,17 @@ def arg_parser(config):
     jump = session.add_mutually_exclusive_group()
     tunnels = parser.add_argument_group()
 
-    parser.add_argument("host", type=str, help="Subdomain of the host's url or the host's IP address")
+    parser.add_argument(
+        "host", type=str, help="Subdomain of the host's url or the host's IP address"
+    )
 
     parser.add_argument("-v", "--version", action="version", version=VERSION)
 
     jump.add_argument(
-        "-j", "--jump", action="store_true", help="SSHs via the jump host specified in the configuration file"
+        "-j",
+        "--jump",
+        action="store_true",
+        help="SSHs via the jump host specified in the configuration file",
     )
     jump.add_argument(
         "-J",
@@ -55,10 +71,17 @@ def arg_parser(config):
         "-o",
         "--nopubkey",
         action="store_true",
-        help="Disables the use of public keys for authentication. (Fixes authentication issues with certain devices)",
+        help=(
+            "Disables the use of public keys for authentication. "
+            "(Fixes authentication issues with certain devices)"
+        ),
     )
     session.add_argument(
-        "-p", "--port", default=config.ssh_port, type=str, help="Specifies the port to use for the SSH session"
+        "-p",
+        "--port",
+        default=config.ssh_port,
+        type=str,
+        help="Specifies the port to use for the SSH session",
     )
 
     tunnels.add_argument(
