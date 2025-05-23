@@ -158,14 +158,14 @@ def build_domain(host_arg, config):
     # then this will make it impossible to resolve those
     if "." in host:
         try:
-            socket.gethostbyname(host)
+            socket.getaddrinfo(host, 0)
             return host_arg
         except socket.gaierror:
             pass
 
     for domain in config.domains:
         try:
-            socket.gethostbyname(host + "." + domain)
+            socket.getaddrinfo(host + "." + domain, 0)
             return host_arg + "." + domain
         except socket.gaierror:
             pass
@@ -180,7 +180,8 @@ def ssh(args, config, domain):
 
     # Add verbosity levels
     if args.v:
-        openssh_command.append("-" + "v" * args.v)
+        multiplier = args.v if args.v < 4 else 3
+        openssh_command.append("-" + "v" * multiplier)
 
     # Add SSH options
     openssh_command.extend(["-o", "StrictHostKeyChecking=no"])
@@ -202,6 +203,7 @@ def ssh(args, config, domain):
 
     openssh_command.append(domain)
 
+    print(openssh_command)
     return subprocess.run(openssh_command, check=True)
 
 
