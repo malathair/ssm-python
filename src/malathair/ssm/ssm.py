@@ -23,17 +23,24 @@ from .config import Config
 VERSION = importlib.metadata.version("malathair_ssm")
 
 
-# Class to override the default argparse help formatting (makes things a bit cleaner)
 class HelpFormatter(argparse.HelpFormatter):
+    """Class to override the default argparse help formatter"""
+
+    # Override the default max_help_position. It will now default to 32 instead of 24
+    # Some of the flags are a bit long and this just makes the output a tad nicer
+    def __init__(self, prog, indent_increment=2, max_help_position=32, width=None):
+        super().__init__(prog, indent_increment, max_help_position, width)
+
+    # Backport Python3.13 action formatting behavior to older python versions
+    # i.e. use this:   -s, --long ARGS
+    # instead of this: -s ARGS, --long ARGS
     def _format_action_invocation(self, action):
         if not action.option_strings:
-            default = self._get_default_metavar_for_positional(action)
-            (metavar,) = self._metavar_formatter(action, default)(1)
-            return metavar
+            return super()._format_action_invocation(action)
 
-        parts = []
-        parts.extend(action.option_strings)
-        return ", ".join(parts)
+        default = self._get_default_metavar_for_optional(action)
+        args_string = self._format_args(action, default)
+        return ", ".join(action.option_strings) + " " + args_string
 
 
 # Define CLI arguments for the program
