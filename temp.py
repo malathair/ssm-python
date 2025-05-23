@@ -43,7 +43,6 @@ class HelpFormatter(argparse.HelpFormatter):
         return ", ".join(action.option_strings) + " " + args_string
 
 
-# Define CLI arguments for the program
 def arg_parser(config) -> argparse.Namespace:
     """
     Defines and parses CLI arguments for the program
@@ -64,37 +63,21 @@ def arg_parser(config) -> argparse.Namespace:
         formatter_class=HelpFormatter,
     )
 
-    logging = parser.add_argument_group()
-
-    basic = parser.add_argument_group()
-
-    jumphosting = parser.add_argument_group()
-    jump = jumphosting.add_mutually_exclusive_group()
-
-    options = parser.add_argument_group()
-    command = parser.add_argument_group()
+    session = parser.add_argument_group()
+    jump = session.add_mutually_exclusive_group()
     tunnels = parser.add_argument_group()
 
     parser.add_argument(
-        "host", type=str, help="Subdomain of the host's FQDN or the host's IP address"
+        "host", type=str, help="Subdomain of the host's url or the host's IP address"
     )
 
-    parser.add_argument("-V", "--version", action="version", version=VERSION)
-
-    logging.add_argument(
-        "-v",
-        action="count",
-        help=(
-            "Print verbose debug messages about the SSH connection. "
-            "Multiple -v options increase the verbosity up to a maximum of 3"
-        ),
-    )
+    parser.add_argument("-v", "--version", action="version", version=VERSION)
 
     jump.add_argument(
         "-j",
         "--jump",
         action="store_true",
-        help="SSH's via the jump host specified in the configuration file",
+        help="SSHs via the jump host specified in the configuration file",
     )
     jump.add_argument(
         "-J",
@@ -103,32 +86,35 @@ def arg_parser(config) -> argparse.Namespace:
         type=str,
         help="Overrides the jump host specified in the configuration file",
     )
-    basic.add_argument(
-        "-p",
-        "--port",
-        default=config.ssh_port,
-        type=str,
-        help="Specifies the port to use for the SSH session",
-    )
 
-    command.add_argument(
+    session.add_argument(
         "-c",
         "--command",
         type=str,
         help=(
             "Execute the specified command on the remote system without opening an interactive "
             "shell. The connection will be terminated immediately after command executes. "
-            "The tunnel flag will be ignored if this option is used"
+            "Additionally, all other arguments supplied will be ignored with the exception of "
+            "--jump and --jumphost"
         ),
     )
-    options.add_argument(
+    session.add_argument(
         "-o",
-        "--nopubkey",
+        "--options",
         action="store_true",
-        help=(
-            "Disables the use of public keys for authentication. "
-            "(Fixes authentication issues with certain devices)"
-        ),
+        help="Use the set of SSH options specified in the configuration file",
+    )
+    session.add_argument(
+        "-O, --option",
+        type=str,
+        help="Specify a set of SSH options for this connection",
+    )
+    session.add_argument(
+        "-p",
+        "--port",
+        default=config.ssh_port,
+        type=str,
+        help="Specifies the port to use for the SSH session",
     )
 
     tunnels.add_argument(
@@ -176,33 +162,24 @@ def build_domain(host_arg, config):
 # Initiate the SSH session using the defined parameters
 def ssh(args, config, domain):
     alt_user = False if domain.find("@") == -1 else True
-    openssh_command = ["ssh", "-p", args.port]
+    command = "ssh -o StrictHostKeyChecking=no -p " + args.port + " " + domain
 
-    # Add verbosity levels
-    if args.v:
-        openssh_command.append("-" + "v" * args.v)
-
-    # Add SSH options
-    openssh_command.extend(["-o", "StrictHostKeyChecking=no"])
     # Disable the use of keys for authentication
     if args.nopubkey:
-        openssh_command.extend(["-o", "PubkeyAuthentication=no"])
+        command = command + " -o PubkeyAuthentication=no"
 
-    # Jumphosting causes problems with sshpass. So only use sshpass if we are not jumphosting
+    # Jumphosting causes problems with sshpass. So only use sshpass
+    # if we are not jumphosting
     if args.jump or (args.jumphost != config.jump_host):
-        openssh_command.extend(["-J", args.jumphost])
+        command = command + " -J " + args.jumphost
     elif config.sshpass and not alt_user:
-        openssh_command[:0] = ["sshpass", "-e"]
+        command = "sshpass -e " + command
 
     # Open a dynamic port forward for socks5 proxy tunneling
-    if args.command:
-        openssh_command.extend(["-c", args.command])
-    elif args.tunnel:
-        openssh_command.extend(["-D", config.tunnel_port])
+    if args.tunnel:
+        command = command + " -D " + config.tunnel_port
 
-    openssh_command.append(domain)
-
-    return subprocess.run(openssh_command, check=True)
+    return subprocess.run(command.split(), check=True)
 
 
 def main():
