@@ -24,9 +24,17 @@ pipx install git+https://github.com/malathair/ssm
 
 ### Updating
 
-To update, just run the uninstall command below and then re-install the most recent version. Any existing configuration files on the system will not be affected by this process.
+To update SSM to the latest version, run one of the following commands (depending on which was used to install it):
 
-If for some reason the format of the config changes in a breaking way, the new version will include a converter that will run the first time ssm is run on the system. The user will be notified if there are any current settings that are unable to be preserved duringt this process
+```bash
+uv tool upgrade malathair-ssm
+```
+
+```bash
+pipx upgrade malathair-ssm
+```
+
+You can run `ssm --version` after updating to view the new version number
 
 ### Configuration
 
@@ -49,6 +57,8 @@ You can use the provided configuration utility by running:
 ```bash
 ssmconf
 ```
+
+If for some reason the format of the config changes in a breaking way, the new version will include a converter that will run the first time ssm is run on the system. The user will be notified if there are any current settings that are unable to be preserved duringt this process
 
 ### Uninstalling
 
