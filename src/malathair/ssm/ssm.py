@@ -26,10 +26,24 @@ VERSION = importlib.metadata.version("malathair_ssm")
 class HelpFormatter(argparse.HelpFormatter):
     """Class to override the default argparse help formatter"""
 
-    # Override the default max_help_position. It will now default to 32 instead of 24
-    # Some of the flags are a bit long and this just makes the output a tad nicer
+    # Override the default max_help_position value. It will now default to 32 instead
+    # of 24. Some of the flags are a bit long and this just makes the output a tad nicer
     def __init__(self, prog, indent_increment=2, max_help_position=32, width=None):
         super().__init__(prog, indent_increment, max_help_position, width)
+
+    # Override default format_help() method to fix some capitalization
+    def format_help(self):
+        return (
+            super()
+            .format_help()
+            .replace("options:", "Options:")
+            .replace("positional arguments:", "Positional Arguments:")
+        )
+
+    # Override default _format_action() method to force a linebreak between all arguments
+    # regardless of section, because walls of text are hard to read
+    def _format_action(self, action):
+        return super()._format_action(action) + "\n"
 
     # Backport Python3.13 action formatting behavior to older python versions
     # i.e. use this:   -s, --long ARGS
@@ -60,33 +74,34 @@ def arg_parser(config) -> argparse.Namespace:
         as attributes. Each attribute stores the user provided value, the default value, or None
     """
     parser = argparse.ArgumentParser(
-        description="An SSH wrapper to simplify life",
+        description=(
+            "An SSH wrapper to simplify life. Privdes shortcuts for common SSH flags, "
+            "dynamic dns name completion based on a configurable list of domains, and "
+            "password autofill via sshpass"
+        ),
         formatter_class=HelpFormatter,
     )
 
-    logging = parser.add_argument_group()
-
-    basic = parser.add_argument_group()
-
-    jumphosting = parser.add_argument_group()
-    jump = jumphosting.add_mutually_exclusive_group()
-
-    options = parser.add_argument_group()
-    command = parser.add_argument_group()
-    tunnels = parser.add_argument_group()
+    jump = parser.add_mutually_exclusive_group()
 
     parser.add_argument(
-        "host", type=str, help="Subdomain of the host's FQDN or the host's IP address"
+        "host",
+        type=str,
+        help=(
+            "The host's IP address or the host portion of it's FQDN. When a value is provided "
+            'that does not contain a ".", SSM assumes the host portion of an FQDN was provided '
+            "and will attempt to autocomplete the full FQDN using the configured list of domains"
+        ),
     )
 
-    parser.add_argument("-V", "--version", action="version", version=VERSION)
-
-    logging.add_argument(
-        "-v",
-        action="count",
+    parser.add_argument(
+        "-c",
+        "--command",
+        type=str,
         help=(
-            "Print verbose debug messages about the SSH connection. "
-            "Multiple -v options increase the verbosity up to a maximum of 3"
+            "Execute the specified command on the remote system without opening an interactive "
+            "shell. The connection will be terminated immediately after command executes. "
+            "The [-t, --tunnel] flag will be ignored if this option is used"
         ),
     )
 
@@ -94,48 +109,62 @@ def arg_parser(config) -> argparse.Namespace:
         "-j",
         "--jump",
         action="store_true",
-        help="SSH's via the jump host specified in the configuration file",
+        help=(
+            "SSH's via the jump host specified in the configuration file. Cannot be used with "
+            "the [-J, --jumphost] flag"
+        ),
     )
+
     jump.add_argument(
         "-J",
         "--jumphost",
-        default=config.jump_host,
-        type=str,
-        help="Overrides the jump host specified in the configuration file",
-    )
-    basic.add_argument(
-        "-p",
-        "--port",
-        default=config.ssh_port,
-        type=str,
-        help="Specifies the port to use for the SSH session",
-    )
-
-    command.add_argument(
-        "-c",
-        "--command",
         type=str,
         help=(
-            "Execute the specified command on the remote system without opening an interactive "
-            "shell. The connection will be terminated immediately after command executes. "
-            "The tunnel flag will be ignored if this option is used"
+            "Overrides the jump host specified in the configuration file. Cannot be used with "
+            "the [-j, --jump] flag"
         ),
     )
-    options.add_argument(
+
+    parser.add_argument(
         "-o",
         "--nopubkey",
         action="store_true",
         help=(
-            "Disables the use of public keys for authentication. "
-            "(Fixes authentication issues with certain devices)"
+            "Disables the use of public keys for authentication. Fixes authentication "
+            "issues with certain devices that fast fail ssh connection attempts when an "
+            'invalid key is tried. Works by setting SSH\'s "PubkeyAuthentication" option to "no"'
         ),
     )
 
-    tunnels.add_argument(
+    parser.add_argument(
+        "-p",
+        "--port",
+        default=config.ssh_port,
+        type=str,
+        help="Specifies the port to use for the SSH session. Defaults to 22",
+    )
+
+    parser.add_argument(
         "-t",
         "--tunnel",
         action="store_true",
-        help="Start a SOCKS5 tunnel on the port defined in the configuration file",
+        help=(
+            "Start a SOCKS5 tunnel on the port defined in the configuration file. You may then "
+            "use a SOCKS5 proxy config in your browser, or a SOCKS5 proxy client like tsocks or "
+            "proxychains to proxy tcp traffic through the SOCKS5 tunnel. This flag has no effect "
+            "when using the [-c, --command] flag to execute a remote command over SSH"
+        ),
+    )
+
+    parser.add_argument("-V", "--version", action="version", version=VERSION)
+
+    parser.add_argument(
+        "-v",
+        action="count",
+        help=(
+            "Print verbose debug messages about the SSH connection. Multiple -v"
+            "options increase the verbosity up to a maximum of 3 (-vvv)"
+        ),
     )
 
     return parser.parse_args()
@@ -190,7 +219,9 @@ def ssh(args, config, domain):
         openssh_command.extend(["-o", "PubkeyAuthentication=no"])
 
     # Jumphosting causes problems with sshpass. So only use sshpass if we are not jumphosting
-    if args.jump or (args.jumphost != config.jump_host):
+    if args.jump:
+        openssh_command.extend(["-J", config.jump_host])
+    elif args.jumphost:
         openssh_command.extend(["-J", args.jumphost])
     elif config.sshpass and not alt_user:
         openssh_command[:0] = ["sshpass", "-e"]
@@ -203,7 +234,7 @@ def ssh(args, config, domain):
 
     openssh_command.append(domain)
 
-    print(openssh_command)
+    # print(openssh_command)
     return subprocess.run(openssh_command, check=True)
 
 
