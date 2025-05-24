@@ -204,13 +204,12 @@ def build_domain(host_arg: str, args: argparse.Namespace, config: Config) -> str
             pass
 
     for domain in config.domains:
-        fqdn = host_arg + "." + domain
         try:
-            socket.getaddrinfo(fqdn, 0)
-            return fqdn
+            socket.getaddrinfo(host + "." + domain, 0)
+            return host_arg + "." + domain
         except socket.gaierror as e:
             if args.dev:
-                print(f"Lookup for {fqdn} failed!")
+                print(f"Lookup for {host + '.' + domain} failed!")
                 print("  -", e, "\n")
             pass
 
@@ -249,8 +248,8 @@ def ssh(args: argparse.Namespace, config: Config, domain: str) -> None:
             + "Warning! Detected use of deprecated -o flag."
         )
         print(
-            colorama.Fore.YELLOW + "  - The behavior of this flag is deprecated and will be "
-            "changed in a future release to support SSH options more generically",
+            colorama.Fore.YELLOW + "  - The behavior of this flag will be changed in a future "
+            "release to support SSH options more generically",
             colorama.Style.RESET_ALL,
             "\n",
         )
