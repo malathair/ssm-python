@@ -253,12 +253,13 @@ def ssh(args: argparse.Namespace, config: Config, domain: str) -> None:
         openssh_command[:0] = ["sshpass", "-e"]
 
     # Open a dynamic port forward for socks5 proxy tunneling
-    if args.command:
-        openssh_command.extend(["-c", args.command])
-    elif args.tunnel:
+    if args.tunnel and not args.command:
         openssh_command.extend(["-D", config.tunnel_port])
 
     openssh_command.append(domain)
+
+    if args.command:
+        openssh_command.extend([args.command])
 
     if args.dev:
         print(openssh_command)
