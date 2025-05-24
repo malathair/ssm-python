@@ -105,6 +105,8 @@ def arg_parser(config) -> argparse.Namespace:
         ),
     )
 
+    parser.add_argument("-d", "--dev", action="store_true", help=argparse.SUPPRESS)
+
     jump.add_argument(
         "-j",
         "--jump",
@@ -171,14 +173,17 @@ def arg_parser(config) -> argparse.Namespace:
 
 
 # Return a valid IP address or hostname to connect to
-def build_domain(host_arg, config):
-    host_index = host_arg.find("@") + 1
-    host = host_arg[host_index::]
+def build_domain(host_arg: str, args: argparse.Namespace, config: Config) -> str | None:
+    host_index: int = host_arg.find("@") + 1
+    host: str = host_arg[host_index::]
 
     try:
         ipaddress.IPv4Network(host)
         return host_arg
-    except ipaddress.AddressValueError:
+    except ipaddress.AddressValueError as e:
+        if args.dev:
+            print("Invalid IP Address!")
+            print("  -", e, "\n")
         pass
 
     # If we are confident the host is not an FQDN skip this test. DNS lookups are incredibly slow
@@ -189,21 +194,40 @@ def build_domain(host_arg, config):
         try:
             socket.getaddrinfo(host, 0)
             return host_arg
-        except socket.gaierror:
+        except socket.gaierror as e:
+            if args.dev:
+                print(f"Lookup for {host} failed!")
+                print("  -", e, "\n")
             pass
 
     for domain in config.domains:
+        fqdn = host_arg + "." + domain
         try:
-            socket.getaddrinfo(host + "." + domain, 0)
-            return host_arg + "." + domain
-        except socket.gaierror:
+            socket.getaddrinfo(fqdn, 0)
+            return fqdn
+        except socket.gaierror as e:
+            if args.dev:
+                print(f"Lookup for {fqdn} failed!")
+                print("  -", e, "\n")
             pass
 
-    raise Exception(f'Host "{host}" is unreachable')
+    return None
+
+
+def get_jumphost(args: argparse.Namespace, config: Config) -> str:
+    host = args.jumphost if args.jumphost else config.jump_host
+
+    domain = build_domain(host, args, config)
+
+    if domain:
+        return domain
+    else:
+        print(f'Failed to find valid FQDN for jumphost "{host}"')
+        return None
 
 
 # Initiate the SSH session using the defined parameters
-def ssh(args, config, domain):
+def ssh(args: argparse.Namespace, config: Config, domain: str) -> None:
     alt_user = False if domain.find("@") == -1 else True
     openssh_command = ["ssh", "-p", args.port]
 
@@ -219,10 +243,12 @@ def ssh(args, config, domain):
         openssh_command.extend(["-o", "PubkeyAuthentication=no"])
 
     # Jumphosting causes problems with sshpass. So only use sshpass if we are not jumphosting
-    if args.jump:
-        openssh_command.extend(["-J", config.jump_host])
-    elif args.jumphost:
-        openssh_command.extend(["-J", args.jumphost])
+    if args.jump or args.jumphost:
+        jumphost = get_jumphost(args, config)
+        if jumphost:
+            openssh_command.extend(["-J", jumphost])
+        else:
+            return
     elif config.sshpass and not alt_user:
         openssh_command[:0] = ["sshpass", "-e"]
 
@@ -234,8 +260,10 @@ def ssh(args, config, domain):
 
     openssh_command.append(domain)
 
-    # print(openssh_command)
-    return subprocess.run(openssh_command, check=True)
+    if args.dev:
+        print(openssh_command)
+    else:
+        subprocess.run(openssh_command, check=True)
 
 
 def main():
@@ -243,12 +271,16 @@ def main():
     args = arg_parser(config)
 
     try:
-        domain = build_domain(args.host, config)
-        ssh(args, config, domain)
+        domain = build_domain(args.host, args, config)
+        if domain:
+            ssh(args, config, domain)
+        else:
+            print(f'Failed to find valid FQDN for "{args.host}"')
     except KeyboardInterrupt:
         pass
-    except subprocess.CalledProcessError:
-        # print(e.returncode)
+    except subprocess.CalledProcessError as e:
+        if args.dev:
+            print(e.returncode)
         pass
     except Exception as e:
         print(e)
