@@ -12,6 +12,7 @@ supported by the OpenSSH config file.
 """
 
 import argparse
+import colorama
 import ipaddress
 import importlib.metadata
 import socket
@@ -134,7 +135,9 @@ def arg_parser(config) -> argparse.Namespace:
         help=(
             "Disables the use of public keys for authentication. Fixes authentication "
             "issues with certain devices that fast fail ssh connection attempts when an "
-            'invalid key is tried. Works by setting SSH\'s "PubkeyAuthentication" option to "no"'
+            'invalid key is tried. Works by setting SSH\'s "PubkeyAuthentication" option to "no". '
+            "The current behavior is deprecated and will be changed in a future release to support "
+            "SSH options more generically"
         ),
     )
 
@@ -240,6 +243,17 @@ def ssh(args: argparse.Namespace, config: Config, domain: str) -> None:
     openssh_command.extend(["-o", "StrictHostKeyChecking=no"])
     # Disable the use of keys for authentication
     if args.nopubkey:
+        print(
+            colorama.Fore.RED
+            + colorama.Style.BRIGHT
+            + "Warning! Detected use of deprecated -o flag."
+        )
+        print(
+            colorama.Fore.YELLOW + "  - The behavior of this flag is deprecated and will be "
+            "changed in a future release to support SSH options more generically",
+            colorama.Style.RESET_ALL,
+            "\n",
+        )
         openssh_command.extend(["-o", "PubkeyAuthentication=no"])
 
     # Jumphosting causes problems with sshpass. So only use sshpass if we are not jumphosting

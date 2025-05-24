@@ -6,7 +6,10 @@ authors = [{ name = "malathair", email = "malathair@spectregate.net" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["toml>=0.10.2"]
+dependencies = [
+    "colorama>=0.4.6",
+    "toml>=0.10.2",
+]
 
 [project.scripts]
 ssm = "malathair.ssm:main"
