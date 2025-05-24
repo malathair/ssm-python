@@ -1,6 +1,6 @@
 [project]
 name = "malathair-ssm"
-version = "1.3.2"
+version = "1.4.0"
 description = "SSH wrapper to simplify life"
 authors = [{ name = "malathair", email = "malathair@spectregate.net" }]
 license = { text = "MIT" }
