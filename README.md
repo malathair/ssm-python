@@ -1,5 +1,10 @@
 # Simple SSH Manager
 
+> [!IMPORTANT]
+> This project is no longer maintained and the repository has been archived.
+>
+> SSM is being ported to Go and the new project can be found here: [Malathair's Simple SSH Manager](https://github.com/malathair/ssm)
+
 SSM is a small Python wrapper to simplify some common SSH use cases. It is essentially just a wrapper around OpenSSH's ssh command that builds and executes the ssh command for you from a simplified set of inputs.
 
 ## Gettings Started
