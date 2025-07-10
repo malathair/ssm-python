@@ -15,11 +15,11 @@ SSM is a small Python wrapper to simplify some common SSH use cases. It is essen
 Install the application with uv or pipx using the following command:
 
 ```bash
-uv tool install git+https://github.com/malathair/ssm
+uv tool install git+https://github.com/malathair/ssm-python
 ```
 
 ```bash
-pipx install git+https://github.com/malathair/ssm
+pipx install git+https://github.com/malathair/ssm-python
 ```
 
 ### Updating
